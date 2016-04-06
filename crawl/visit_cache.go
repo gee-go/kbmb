@@ -6,6 +6,7 @@ type VisitCache struct {
 	mu sync.RWMutex
 
 	data map[string]struct{} // use empty struct value because it uses no space.
+	q    []string
 }
 
 func NewVisitCache() *VisitCache {
@@ -42,6 +43,32 @@ func (v *VisitCache) Has(u string) bool {
 
 	_, ok := v.data[u]
 	return ok
+}
+
+func (v *VisitCache) Enqueue(u string) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	if _, found := v.data[u]; found {
+		return
+	}
+
+	v.data[u] = struct{}{}
+	v.q = append(v.q, u)
+}
+
+func (v *VisitCache) Pop() string {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	var x string
+	x, v.q = v.q[0], v.q[1:]
+	return x
+}
+
+func (v *VisitCache) Len() int {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return len(v.q)
 }
 
 // FilterDupes removes all url's in the slice that already are in visit cache.

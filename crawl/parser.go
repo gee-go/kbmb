@@ -1,11 +1,10 @@
 package crawl
 
 import (
-	"fmt"
-	"log"
 	"net/url"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/apex/log"
 )
 
 type Doc struct {
@@ -15,13 +14,17 @@ type Doc struct {
 type URLFn func(u *url.URL)
 
 type PageResult struct {
+	// Emails contains all emails found on page
 	Emails []string
-	Next   []string
+
+	// Next contains links with the correct host.
+	// Not guarenteed to be unique or unvisited
+	Next []string
 }
 
 func NewDoc(u string) (*Doc, error) {
 	doc, err := goquery.NewDocument(u)
-	fmt.Println(doc.Url.Host)
+
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +41,7 @@ func (d *Doc) EachURL(fn URLFn) {
 
 		u, err := url.Parse(l)
 		if err != nil {
-			log.Fatal(err)
+			log.WithError(err).Info("url")
 		}
 
 		fn(d.doc.Url.ResolveReference(u))
@@ -61,5 +64,6 @@ func (d *Doc) Result() *PageResult {
 			out.Next = append(out.Next, u.String())
 		}
 	})
+
 	return out
 }

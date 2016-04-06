@@ -1,14 +1,17 @@
 package crawl
 
 import (
+	"fmt"
 	"net/url"
-
-	"github.com/apex/log"
-	"github.com/k0kubun/pp"
+	"sync"
 )
 
 type Crawler struct {
 	root *url.URL
+	vc   *VisitCache
+
+	q  chan string
+	wg sync.WaitGroup
 }
 
 func New(root string) (*Crawler, error) {
@@ -24,23 +27,31 @@ func New(root string) (*Crawler, error) {
 
 	return &Crawler{
 		root: u,
+		vc:   NewVisitCache(),
 	}, nil
 }
 
 func (c *Crawler) HandleURL(u string) error {
-	log.WithField("url", u).Info("start")
 	doc, err := NewDoc(u)
 	if err != nil {
 		return err
 	}
 
 	pr := doc.Result()
-	pp.Print(pr)
+
+	for _, next := range pr.Next {
+		c.vc.Enqueue(next)
+	}
+	fmt.Println(u)
+
 	return nil
 }
 
 func (c *Crawler) Run() error {
-	c.HandleURL(c.root.String())
-
+	c.vc.Enqueue(c.root.String())
+	for c.vc.Len() > 0 {
+		c.HandleURL(c.vc.Pop())
+	}
+	// time.Sleep(3 * time.Second)
 	return nil
 }
