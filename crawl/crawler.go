@@ -3,15 +3,18 @@ package crawl
 import (
 	"fmt"
 	"net/url"
-	"sync"
+
+	"github.com/eapache/channels"
 )
+
+type Job struct {
+	URL  string
+	Root string
+}
 
 type Crawler struct {
 	root *url.URL
 	vc   *VisitCache
-
-	q  chan string
-	wg sync.WaitGroup
 }
 
 func New(root string) (*Crawler, error) {
@@ -48,7 +51,13 @@ func (c *Crawler) HandleURL(u string) error {
 }
 
 func (c *Crawler) Run() error {
-	c.vc.Enqueue(c.root.String())
+	jobChan := channels.NewInfiniteChannel()
+
+	jobChan.In() <- &Job{
+		URL:  c.root.String(),
+		Root: "web.mit.edu",
+	}
+
 	for c.vc.Len() > 0 {
 		c.HandleURL(c.vc.Pop())
 	}

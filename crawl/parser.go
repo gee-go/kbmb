@@ -33,6 +33,7 @@ func NewDoc(u string) (*Doc, error) {
 
 func (d *Doc) EachURL(fn URLFn) {
 	sel := d.doc.Find("a[href]")
+
 	for i := range sel.Nodes {
 		l, ok := sel.Eq(i).Attr("href")
 		if !ok {
