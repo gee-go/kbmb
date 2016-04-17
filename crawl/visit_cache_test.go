@@ -1,22 +1,16 @@
 package crawl
 
-import (
-	"testing"
+// func TestVisitCache(t *testing.T) {
+// 	t.Parallel()
+// 	assert := require.New(t)
+// 	vc := NewVisitCache()
 
-	"github.com/stretchr/testify/require"
-)
+// 	vc.Add("a")
+// 	exp := []string{"a"}
+// 	assert.Equal(exp, vc.List())
 
-func TestVisitCache(t *testing.T) {
-	t.Parallel()
-	assert := require.New(t)
-	vc := NewVisitCache()
+// 	vc.Add("a")
+// 	assert.Equal(exp, vc.List(), "check add duplicate")
 
-	vc.Add("a")
-	exp := []string{"a"}
-	assert.Equal(exp, vc.List())
-
-	vc.Add("a")
-	assert.Equal(exp, vc.List(), "check add duplicate")
-
-	assert.Equal([]string{"b", "c", "d"}, vc.FilterDupes([]string{"a", "b", "b", "c", "d"}))
-}
+// 	assert.Equal([]string{"b", "c", "d"}, vc.FilterDupes([]string{"a", "b", "b", "c", "d"}))
+// }
