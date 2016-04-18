@@ -31,12 +31,13 @@ func BenchmarkUniqueStringChan(b *testing.B) {
 	q := NewUniqueStringChan()
 
 	src := mrand.NewSource()
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		q.In() <- string(mrand.AlphaBytes(src, 32))
+		q.In() <- string(mrand.AlphaBytes(src, 20))
 	}
 
-	for i := 0; i < b.N; i++ {
+	for i := 0; i < q.Count(); i++ {
 		<-q.Out()
 	}
 }
