@@ -4,18 +4,20 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type Job struct {
 	URL  string
-	Root string
+	Root *url.URL
 }
 
 type Crawler struct {
 	root *url.URL
 
-	resultChan chan *PageResult
+	numWorkers int
 	visitChan  *UniqueStringChan
+	workerChan chan chan *Job
 }
 
 func New(root string) (*Crawler, error) {
@@ -37,9 +39,23 @@ func New(root string) (*Crawler, error) {
 	}
 
 	return &Crawler{
-		root:      resp.Request.URL,
-		visitChan: NewUniqueStringChan(),
+		root:       resp.Request.URL,
+		numWorkers: 10,
+		visitChan:  NewUniqueStringChan(),
+		workerChan: make(chan chan *Job, 10),
 	}, nil
+}
+
+func (c *Crawler) newWorker(i int) *Worker {
+	w := &Worker{
+		ID:          i,
+		Work:        make(chan *Job),
+		WorkerQueue: c.workerChan,
+		QuitChan:    make(chan bool),
+		VisitChan:   c.visitChan.In(),
+	}
+	w.Start()
+	return w
 }
 
 func (c *Crawler) HandleURL(u string) error {
@@ -57,11 +73,22 @@ func (c *Crawler) HandleURL(u string) error {
 }
 
 func (c *Crawler) Run() error {
+	for i := 0; i < c.numWorkers; i++ {
+		c.newWorker(i)
+	}
+
 	go func() {
-		for u := range c.visitChan.Out() {
-			fmt.Println(u)
-			c.HandleURL(u)
+		for {
+			select {
+			case work := <-c.visitChan.Out():
+				fmt.Println(work)
+				go func() {
+					worker := <-c.workerChan
+					worker <- &Job{work, c.root}
+				}()
+			}
 		}
+
 	}()
 
 	c.HandleURL(c.root.String())
@@ -69,6 +96,8 @@ func (c *Crawler) Run() error {
 	for c.visitChan.Len() > 0 {
 
 	}
+
+	time.Sleep(30 * time.Second)
 
 	return nil
 }
