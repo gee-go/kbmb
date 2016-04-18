@@ -2,6 +2,7 @@ package crawl
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 )
 
@@ -27,9 +28,16 @@ func New(root string) (*Crawler, error) {
 	if u.Scheme == "" {
 		u.Scheme = "http"
 	}
-	fmt.Println(u)
+
+	// check for redirects
+	// TODO - don't need to do 2 requests for first page.
+	resp, err := http.Get(u.String())
+	if err != nil {
+		return nil, err
+	}
+
 	return &Crawler{
-		root:      u,
+		root:      resp.Request.URL,
 		visitChan: NewUniqueStringChan(),
 	}, nil
 }

@@ -62,7 +62,7 @@ func (d *Doc) Result() *PageResult {
 			return
 		}
 
-		if u.Host == "web.mit.edu" {
+		if u.Host == d.root.Host {
 			out.Next = append(out.Next, u.String())
 		}
 	})
