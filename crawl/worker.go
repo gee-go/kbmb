@@ -16,7 +16,30 @@ type Worker struct {
 	jobChan    chan *Job
 	workerChan chan chan *Job
 
-	q *JobQueue
+	q         *JobQueue
+	emailChan *UniqueStringChan
+}
+
+func (w *Worker) Process(j *Job) error {
+	doc, err := NewDoc(j.URL, j.Root)
+	if err != nil {
+		return err
+	}
+
+	if doc.doc.Url.Host != j.Root.Host {
+		return nil
+	}
+
+	doc.EachURL(func(u *url.URL) {
+		// handle mailto links
+		if u.Scheme == "mailto" {
+			w.emailChan.In() <- u.Opaque
+		} else if u.Host == j.Root.Host {
+			w.q.Enqueue(u.String())
+		}
+	})
+
+	return nil
 }
 
 // Start processing jobs.
@@ -27,21 +50,9 @@ func (w *Worker) Start() {
 		select {
 		// got a new job.
 		case job := <-w.jobChan:
-			doc, err := NewDoc(job.URL, job.Root)
-			if err != nil {
+			if err := w.Process(job); err != nil {
 				fmt.Println(err)
-				continue
 			}
-			pr := doc.Result()
-
-			for _, email := range pr.Emails {
-				fmt.Println(w.ID, email, job.URL)
-			}
-
-			for _, next := range pr.Next {
-				w.q.Enqueue(next)
-			}
-
 			w.q.Complete()
 		}
 	}

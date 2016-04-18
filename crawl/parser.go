@@ -33,7 +33,7 @@ func NewDoc(u string, root *url.URL) (*Doc, error) {
 }
 
 func (d *Doc) EachURL(fn URLFn) {
-	sel := d.doc.Find("a[href]")
+	sel := d.doc.Find("[href]")
 
 	for i := range sel.Nodes {
 		l, ok := sel.Eq(i).Attr("href")
@@ -44,6 +44,7 @@ func (d *Doc) EachURL(fn URLFn) {
 		u, err := url.Parse(l)
 		if err != nil {
 			log.WithError(err).Info("url")
+			continue
 		}
 
 		fn(d.doc.Url.ResolveReference(u))

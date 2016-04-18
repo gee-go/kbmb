@@ -1,6 +1,7 @@
 package crawl
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -10,6 +11,7 @@ type Crawler struct {
 	numWorkers int
 	workers    chan chan *Job
 	q          *JobQueue
+	emailChan  *UniqueStringChan
 }
 
 func New(root string) (*Crawler, error) {
@@ -36,6 +38,7 @@ func New(root string) (*Crawler, error) {
 		q:          NewJobQueue(),
 		numWorkers: size,
 		workers:    make(chan chan *Job, size),
+		emailChan:  NewUniqueStringChan(),
 	}, nil
 }
 
@@ -46,6 +49,7 @@ func (c *Crawler) startWorkers() {
 			jobChan:    make(chan *Job),
 			workerChan: c.workers,
 			q:          c.q,
+			emailChan:  c.emailChan,
 		}
 		go w.Start()
 	}
@@ -53,6 +57,7 @@ func (c *Crawler) startWorkers() {
 	// send jobs
 	for u := range c.q.Out() {
 		worker := <-c.workers
+
 		worker <- &Job{u, c.root}
 	}
 }
@@ -60,6 +65,11 @@ func (c *Crawler) startWorkers() {
 func (c *Crawler) Run() error {
 	go c.startWorkers()
 	c.q.Enqueue(c.root.String())
+	go func() {
+		for email := range c.emailChan.Out() {
+			fmt.Println(email)
+		}
+	}()
 	c.q.wg.Wait()
 	return nil
 }
