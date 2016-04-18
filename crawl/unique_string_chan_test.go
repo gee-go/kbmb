@@ -3,6 +3,7 @@ package crawl
 import (
 	"testing"
 
+	"github.com/gee-go/util/mrand"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,4 +25,18 @@ func TestUniqueStringChan(t *testing.T) {
 	}
 
 	a.Equal([]string{"a", "b", "d"}, out)
+}
+
+func BenchmarkUniqueStringChan(b *testing.B) {
+	q := NewUniqueStringChan()
+
+	src := mrand.NewSource()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		q.In() <- string(mrand.AlphaBytes(src, 32))
+	}
+
+	for i := 0; i < b.N; i++ {
+		<-q.Out()
+	}
 }

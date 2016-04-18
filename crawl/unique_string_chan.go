@@ -35,10 +35,6 @@ func (ch *UniqueStringChan) Out() <-chan string {
 	return ch.output
 }
 
-func (ch *UniqueStringChan) Len() int {
-	return <-ch.length
-}
-
 func (ch *UniqueStringChan) run() {
 
 	var input, output chan string

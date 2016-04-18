@@ -10,6 +10,12 @@ type Job struct {
 	Root *url.URL
 }
 
+type CrawlState struct {
+	Root *url.URL
+
+	WorkerChan chan chan *Job
+}
+
 type Worker struct {
 	ID int
 
@@ -19,6 +25,7 @@ type Worker struct {
 
 	emailResultChan chan<- string
 	nextVisitChan   chan<- string
+	q               *JobQueue
 }
 
 // Start processing jobs.
@@ -29,7 +36,7 @@ func (w *Worker) Start() {
 		select {
 		// got a new job.
 		case job := <-w.jobChan:
-
+			fmt.Printf("%d job\n", w.ID)
 			doc, err := NewDoc(job.URL, job.Root)
 			if err != nil {
 				fmt.Println(err)
@@ -38,12 +45,14 @@ func (w *Worker) Start() {
 			pr := doc.Result()
 
 			for _, email := range pr.Emails {
-				w.emailResultChan <- email
+				fmt.Println(email)
 			}
 
 			for _, next := range pr.Next {
-				w.nextVisitChan <- next
+				w.q.Add(next)
 			}
+
+			w.q.complete <- true
 
 		case <-w.quitChan:
 			// We have been asked to stop.
@@ -59,13 +68,15 @@ func (w *Worker) Stop() {
 
 type WorkerPool struct {
 	numWorkers int
-
+	workers    []*Worker
 	workerChan chan chan *Job
 	quitChan   chan struct{}
 	resultChan chan *PageResult
 
 	emailResultChan *UniqueStringChan
 	nextVisitChan   *UniqueStringChan
+
+	q *JobQueue
 }
 
 // EmailChan allows iteration over all emails seen.
@@ -78,20 +89,23 @@ func (wp *WorkerPool) NextChan() <-chan string {
 }
 
 func (wp *WorkerPool) Start(root *url.URL) {
-	wp.nextVisitChan.In() <- root.String()
+	wp.q.Add(root.String())
+	go func() {
+		for {
+			select {
+			case email := <-wp.EmailChan():
+				fmt.Println(email)
+			case work := <-wp.q.output:
 
-	for {
-		select {
-		case email := <-wp.EmailChan():
-			fmt.Println(email)
-		case work := <-wp.NextChan():
+				go func() {
+					worker := <-wp.workerChan
+					worker <- &Job{work, root}
 
-			go func() {
-				worker := <-wp.workerChan
-				worker <- &Job{work, root}
-			}()
+				}()
+			}
 		}
-	}
+	}()
+	wp.q.wg.Wait()
 
 	// for wp.nextVisitChan.Len() > 0 {
 
@@ -108,6 +122,7 @@ func NewWorkerPool(size int) *WorkerPool {
 
 		emailResultChan: NewUniqueStringChan(),
 		nextVisitChan:   NewUniqueStringChan(),
+		q:               NewJobQueue(),
 	}
 
 	for i := 0; i < size; i++ {
@@ -118,7 +133,9 @@ func NewWorkerPool(size int) *WorkerPool {
 			quitChan:        make(chan struct{}),
 			emailResultChan: wp.emailResultChan.In(),
 			nextVisitChan:   wp.nextVisitChan.In(),
+			q:               wp.q,
 		}
+		wp.workers = append(wp.workers, w)
 		go w.Start()
 	}
 
