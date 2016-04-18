@@ -16,7 +16,7 @@ func check(err error) {
 
 func main() {
 	log.SetHandler(cli.New(os.Stderr))
-	s, err := crawl.New("mit.edu")
+	s, err := crawl.New("web.mit.edu")
 	check(err)
 
 	check(s.Run())

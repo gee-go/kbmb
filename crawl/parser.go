@@ -8,7 +8,8 @@ import (
 )
 
 type Doc struct {
-	doc *goquery.Document
+	doc  *goquery.Document
+	root *url.URL
 }
 
 type URLFn func(u *url.URL)
@@ -22,13 +23,13 @@ type PageResult struct {
 	Next []string
 }
 
-func NewDoc(u string) (*Doc, error) {
+func NewDoc(u string, root *url.URL) (*Doc, error) {
 	doc, err := goquery.NewDocument(u)
 
 	if err != nil {
 		return nil, err
 	}
-	return &Doc{doc}, nil
+	return &Doc{doc, root}, nil
 }
 
 func (d *Doc) EachURL(fn URLFn) {
@@ -61,7 +62,7 @@ func (d *Doc) Result() *PageResult {
 			return
 		}
 
-		if u.Host == d.doc.Url.Host {
+		if u.Host == "web.mit.edu" {
 			out.Next = append(out.Next, u.String())
 		}
 	})

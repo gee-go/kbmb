@@ -3,8 +3,6 @@ package crawl
 import (
 	"fmt"
 	"net/url"
-
-	"github.com/eapache/channels"
 )
 
 type Job struct {
@@ -14,7 +12,9 @@ type Job struct {
 
 type Crawler struct {
 	root *url.URL
-	vc   *VisitCache
+
+	resultChan chan *PageResult
+	visitChan  *UniqueStringChan
 }
 
 func New(root string) (*Crawler, error) {
@@ -27,40 +27,40 @@ func New(root string) (*Crawler, error) {
 	if u.Scheme == "" {
 		u.Scheme = "http"
 	}
-
+	fmt.Println(u)
 	return &Crawler{
-		root: u,
-		vc:   NewVisitCache(),
+		root:      u,
+		visitChan: NewUniqueStringChan(),
 	}, nil
 }
 
 func (c *Crawler) HandleURL(u string) error {
-	doc, err := NewDoc(u)
+	doc, err := NewDoc(u, c.root)
 	if err != nil {
 		return err
 	}
-
 	pr := doc.Result()
 
 	for _, next := range pr.Next {
-		c.vc.Enqueue(next)
+		c.visitChan.In() <- next
 	}
-	fmt.Println(u)
 
 	return nil
 }
 
 func (c *Crawler) Run() error {
-	jobChan := channels.NewInfiniteChannel()
+	go func() {
+		for u := range c.visitChan.Out() {
+			fmt.Println(u)
+			c.HandleURL(u)
+		}
+	}()
 
-	jobChan.In() <- &Job{
-		URL:  c.root.String(),
-		Root: "web.mit.edu",
+	c.HandleURL(c.root.String())
+
+	for c.visitChan.Len() > 0 {
+
 	}
 
-	for c.vc.Len() > 0 {
-		c.HandleURL(c.vc.Pop())
-	}
-	// time.Sleep(3 * time.Second)
 	return nil
 }
