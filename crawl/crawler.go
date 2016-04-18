@@ -6,7 +6,10 @@ import (
 )
 
 type Crawler struct {
-	root *url.URL
+	root       *url.URL
+	numWorkers int
+	workers    chan chan *Job
+	q          *JobQueue
 }
 
 func New(root string) (*Crawler, error) {
@@ -27,14 +30,36 @@ func New(root string) (*Crawler, error) {
 		return nil, err
 	}
 
+	size := 8
 	return &Crawler{
-		root: resp.Request.URL,
+		root:       resp.Request.URL,
+		q:          NewJobQueue(),
+		numWorkers: size,
+		workers:    make(chan chan *Job, size),
 	}, nil
 }
 
-func (c *Crawler) Run() error {
-	wp := NewWorkerPool(4)
-	wp.Start(c.root)
+func (c *Crawler) startWorkers() {
+	for i := 0; i < c.numWorkers; i++ {
+		w := &Worker{
+			ID:         i,
+			jobChan:    make(chan *Job),
+			workerChan: c.workers,
+			q:          c.q,
+		}
+		go w.Start()
+	}
 
+	// send jobs
+	for u := range c.q.Out() {
+		worker := <-c.workers
+		worker <- &Job{u, c.root}
+	}
+}
+
+func (c *Crawler) Run() error {
+	go c.startWorkers()
+	c.q.Enqueue(c.root.String())
+	c.q.wg.Wait()
 	return nil
 }

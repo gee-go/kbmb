@@ -1,22 +1,17 @@
 package crawl
 
-import "github.com/eapache/queue"
-
 // UniqueStringChan converts a string channel to one that only outputs non-duplicate strings.
 type UniqueStringChan struct {
 	seen          map[string]struct{}
-	length        chan int
 	input, output chan string
-	buffer        *queue.Queue
+	buffer        []string
 }
 
 func NewUniqueStringChan() *UniqueStringChan {
 	ch := &UniqueStringChan{
 		seen:   make(map[string]struct{}),
-		length: make(chan int),
 		input:  make(chan string),
 		output: make(chan string),
-		buffer: queue.New(),
 	}
 	go ch.run()
 
@@ -35,48 +30,46 @@ func (ch *UniqueStringChan) Out() <-chan string {
 	return ch.output
 }
 
-func (ch *UniqueStringChan) Len() int {
-	return <-ch.length
-}
-
 func (ch *UniqueStringChan) Count() int {
 	return len(ch.seen)
 }
 
+func (ch *UniqueStringChan) send(v string) {
+	_, found := ch.seen[v]
+	if !found {
+		ch.seen[v] = struct{}{}
+		ch.buffer = append(ch.buffer, v)
+	}
+}
+
+func (ch *UniqueStringChan) flush() {
+	for _, v := range ch.buffer {
+		ch.output <- v
+	}
+	close(ch.output)
+}
+
 func (ch *UniqueStringChan) run() {
+	defer ch.flush()
 
-	var input, output chan string
-	var next string
-	input = ch.input
-
-	for input != nil || output != nil {
-		select {
-		case elem, open := <-input:
-			if open {
-				_, found := ch.seen[elem]
-
-				if !found {
-					ch.seen[elem] = struct{}{}
-					ch.buffer.Add(elem)
-				}
-
-			} else {
-				input = nil
+	for {
+		// always append to buffer if empty
+		if len(ch.buffer) == 0 {
+			v, open := <-ch.input
+			if !open {
+				return
 			}
-		case output <- next:
-			ch.buffer.Remove()
-		case ch.length <- ch.buffer.Length():
-		}
-
-		if ch.buffer.Length() > 0 {
-			output = ch.output
-			next = ch.buffer.Peek().(string)
+			ch.send(v)
 		} else {
-			output = nil
-			next = ""
+			select {
+			case v, open := <-ch.input:
+				if !open {
+					return
+				}
+				ch.send(v)
+			case ch.output <- ch.buffer[0]:
+				ch.buffer = ch.buffer[1:]
+			}
 		}
 	}
-
-	close(ch.output)
-	close(ch.length)
 }
