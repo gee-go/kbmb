@@ -41,3 +41,18 @@ func BenchmarkUniqueStringChan(b *testing.B) {
 		<-q.Out()
 	}
 }
+
+func BenchmarkQueue(b *testing.B) {
+	q := NewJobQueue()
+
+	src := mrand.NewSource()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		q.Put(string(mrand.AlphaBytes(src, 20)))
+	}
+
+	for i := int64(0); i < q.queue.Len(); i++ {
+		q.Poll()
+	}
+}

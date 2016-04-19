@@ -1,89 +1,56 @@
 package crawl
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/Workiva/go-datastructures/queue"
+)
 
 type JobQueue struct {
-	seen          map[string]struct{}
-	input, output chan string
-	buffer        []string
+	seen  map[string]struct{}
+	queue *queue.Queue
 
+	mu sync.Mutex
 	wg sync.WaitGroup
 }
 
 func NewJobQueue() *JobQueue {
-	ch := &JobQueue{
-		seen:   make(map[string]struct{}),
-		input:  make(chan string),
-		output: make(chan string),
+	return &JobQueue{
+		queue: queue.New(1000),
+		seen:  make(map[string]struct{}),
 	}
-	go ch.run()
-
-	return ch
 }
 
-func (ch *JobQueue) Close() {
-	close(ch.input)
-}
+// Put url in Job queue.
+// Ignore if already seen, otherwise append to queue.
+func (ch *JobQueue) Put(u string) error {
+	ch.mu.Lock()
+	defer ch.mu.Unlock()
 
-func (ch *JobQueue) Out() <-chan string {
-	return ch.output
-}
+	//
+	_, found := ch.seen[u]
+	if found {
+		return nil
+	}
+	ch.seen[u] = struct{}{}
 
-func (ch *JobQueue) Enqueue(u string) {
 	ch.wg.Add(1)
-	ch.input <- u
-}
-
-func (ch *JobQueue) Count() int {
-	return len(ch.seen)
+	return ch.queue.Put(u)
 }
 
 func (ch *JobQueue) Complete() {
 	ch.wg.Done()
 }
 
-func (ch *JobQueue) send(v string) {
-	_, found := ch.seen[v]
-	if !found {
-		ch.seen[v] = struct{}{}
-		ch.buffer = append(ch.buffer, v)
-	} else {
-		ch.wg.Done()
-	}
-}
-
-func (ch *JobQueue) flush() {
-	for _, v := range ch.buffer {
-		ch.output <- v
-	}
-	close(ch.output)
-}
-
 func (ch *JobQueue) Wait() {
 	ch.wg.Wait()
 }
 
-func (ch *JobQueue) run() {
-	defer ch.flush()
-
-	for {
-		// always append to buffer if empty
-		if len(ch.buffer) == 0 {
-			v, open := <-ch.input
-			if !open {
-				return
-			}
-			ch.send(v)
-		} else {
-			select {
-			case v, open := <-ch.input:
-				if !open {
-					return
-				}
-				ch.send(v)
-			case ch.output <- ch.buffer[0]:
-				ch.buffer = ch.buffer[1:]
-			}
-		}
+func (ch *JobQueue) Poll() (string, error) {
+	out, err := ch.queue.Get(1)
+	if err != nil {
+		return "", err
 	}
+
+	return out[0].(string), nil
 }

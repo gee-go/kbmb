@@ -64,6 +64,7 @@ func (d *Doc) Result() *PageResult {
 		}
 
 		if u.Host == d.root.Host {
+
 			out.Next = append(out.Next, u.String())
 		}
 	})

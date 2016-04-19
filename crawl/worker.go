@@ -35,7 +35,13 @@ func (w *Worker) Process(j *Job) error {
 		if u.Scheme == "mailto" {
 			w.emailChan.In() <- u.Opaque
 		} else if u.Host == j.Root.Host {
-			w.q.Enqueue(u.String())
+			next := u.String()
+
+			if len(next) > 0 && next[len(next)-1] == '/' {
+				next = next[:len(next)-1]
+			}
+
+			w.q.Put(next)
 		}
 	})
 

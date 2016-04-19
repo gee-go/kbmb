@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"runtime"
 )
 
 type Crawler struct {
@@ -32,7 +33,12 @@ func New(root string) (*Crawler, error) {
 		return nil, err
 	}
 
-	size := 8
+	size := runtime.NumCPU() - 1
+	if size < 1 {
+
+		size = 1
+	}
+	fmt.Println(size)
 	return &Crawler{
 		root:       resp.Request.URL,
 		q:          NewJobQueue(),
@@ -55,16 +61,21 @@ func (c *Crawler) startWorkers() {
 	}
 
 	// send jobs
-	for u := range c.q.Out() {
+	for {
+		u, err := c.q.Poll()
+		fmt.Println(u)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
 		worker := <-c.workers
-
 		worker <- &Job{u, c.root}
 	}
 }
 
 func (c *Crawler) Run() error {
 	go c.startWorkers()
-	c.q.Enqueue(c.root.String())
+	c.q.Put(c.root.String())
 	go func() {
 		for email := range c.emailChan.Out() {
 			fmt.Println(email)
