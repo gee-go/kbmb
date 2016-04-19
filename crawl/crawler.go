@@ -35,9 +35,9 @@ func New(root string) (*Crawler, error) {
 
 	size := runtime.NumCPU() - 1
 	if size < 1 {
-
 		size = 1
 	}
+
 	fmt.Println(size)
 	return &Crawler{
 		root:       resp.Request.URL,

@@ -2,7 +2,15 @@ package crawl
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/k0kubun/pp"
+
+	"golang.org/x/net/context"
+	"golang.org/x/net/context/ctxhttp"
 )
 
 type Job struct {
@@ -20,11 +28,17 @@ type Worker struct {
 	emailChan *UniqueStringChan
 }
 
-func (w *Worker) Process(j *Job) error {
-	doc, err := NewDoc(j.URL, j.Root)
+func (w *Worker) Process(ctx context.Context, j *Job) error {
+	resp, err := ctxhttp.Get(ctx, http.DefaultClient, j.URL)
 	if err != nil {
 		return err
 	}
+	pp.Println(resp.Header.Get("Content-Type"))
+	d, err := goquery.NewDocumentFromResponse(resp)
+	if err != nil {
+		return err
+	}
+	doc := &Doc{d, j.Root}
 
 	if doc.doc.Url.Host != j.Root.Host {
 		return nil
@@ -56,7 +70,8 @@ func (w *Worker) Start() {
 		select {
 		// got a new job.
 		case job := <-w.jobChan:
-			if err := w.Process(job); err != nil {
+			ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
+			if err := w.Process(ctx, job); err != nil {
 				fmt.Println(err)
 			}
 			w.q.Complete()
