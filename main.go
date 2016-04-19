@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/apex/log"
@@ -39,6 +40,8 @@ func main() {
 	s, err := crawl.New(conf.Host)
 	check(err)
 
-	check(s.Run())
+	for e := range s.Run() {
+		fmt.Println(e)
+	}
 
 }

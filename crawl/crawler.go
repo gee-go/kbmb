@@ -56,6 +56,8 @@ func (c *Crawler) startWorkers() {
 			workerChan: c.workers,
 			q:          c.q,
 			emailChan:  c.emailChan,
+
+			Host: c.root.Host,
 		}
 		go w.Start()
 	}
@@ -63,24 +65,23 @@ func (c *Crawler) startWorkers() {
 	// send jobs
 	for {
 		u, err := c.q.Poll()
-		fmt.Println(u)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 		worker := <-c.workers
-		worker <- &Job{u, c.root}
+		worker <- u
 	}
 }
 
-func (c *Crawler) Run() error {
+func (c *Crawler) Run() <-chan string {
 	go c.startWorkers()
-	c.q.Put(c.root.String())
+	c.q.Put(&Job{URL: c.root})
+
 	go func() {
-		for email := range c.emailChan.Out() {
-			fmt.Println(email)
-		}
+		c.q.wg.Wait()
+		c.emailChan.Close()
 	}()
-	c.q.wg.Wait()
-	return nil
+
+	return c.emailChan.Out()
 }

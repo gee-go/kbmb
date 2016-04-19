@@ -7,15 +7,23 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/k0kubun/pp"
 
 	"golang.org/x/net/context"
 	"golang.org/x/net/context/ctxhttp"
 )
 
 type Job struct {
-	URL  string
-	Root *url.URL
+	URL *url.URL
+}
+
+func (j *Job) Key() string {
+	u := j.URL.String()
+
+	if len(u) > 0 && u[len(u)-1] == '/' {
+		u = u[:len(u)-1]
+	}
+
+	return u
 }
 
 type Worker struct {
@@ -26,21 +34,23 @@ type Worker struct {
 
 	q         *JobQueue
 	emailChan *UniqueStringChan
+
+	Host string
 }
 
 func (w *Worker) Process(ctx context.Context, j *Job) error {
-	resp, err := ctxhttp.Get(ctx, http.DefaultClient, j.URL)
+	resp, err := ctxhttp.Get(ctx, http.DefaultClient, j.URL.String())
 	if err != nil {
 		return err
 	}
-	pp.Println(resp.Header.Get("Content-Type"))
+
 	d, err := goquery.NewDocumentFromResponse(resp)
 	if err != nil {
 		return err
 	}
-	doc := &Doc{d, j.Root}
+	doc := &Doc{d, w.Host}
 
-	if doc.doc.Url.Host != j.Root.Host {
+	if doc.doc.Url.Host != w.Host {
 		return nil
 	}
 
@@ -48,14 +58,8 @@ func (w *Worker) Process(ctx context.Context, j *Job) error {
 		// handle mailto links
 		if u.Scheme == "mailto" {
 			w.emailChan.In() <- u.Opaque
-		} else if u.Host == j.Root.Host {
-			next := u.String()
-
-			if len(next) > 0 && next[len(next)-1] == '/' {
-				next = next[:len(next)-1]
-			}
-
-			w.q.Put(next)
+		} else if u.Host == w.Host {
+			w.q.Put(&Job{URL: u})
 		}
 	})
 

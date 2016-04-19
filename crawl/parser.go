@@ -9,7 +9,7 @@ import (
 
 type Doc struct {
 	doc  *goquery.Document
-	root *url.URL
+	root string
 }
 
 type URLFn func(u *url.URL)
@@ -23,7 +23,7 @@ type PageResult struct {
 	Next []string
 }
 
-func NewDoc(u string, root *url.URL) (*Doc, error) {
+func NewDoc(u string, root string) (*Doc, error) {
 	doc, err := goquery.NewDocument(u)
 
 	if err != nil {
@@ -63,7 +63,7 @@ func (d *Doc) Result() *PageResult {
 			return
 		}
 
-		if u.Host == d.root.Host {
+		if u.Host == d.root {
 
 			out.Next = append(out.Next, u.String())
 		}

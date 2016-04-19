@@ -23,11 +23,11 @@ func NewJobQueue() *JobQueue {
 
 // Put url in Job queue.
 // Ignore if already seen, otherwise append to queue.
-func (ch *JobQueue) Put(u string) error {
+func (ch *JobQueue) Put(j *Job) error {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 
-	//
+	u := j.Key()
 	_, found := ch.seen[u]
 	if found {
 		return nil
@@ -35,7 +35,7 @@ func (ch *JobQueue) Put(u string) error {
 	ch.seen[u] = struct{}{}
 
 	ch.wg.Add(1)
-	return ch.queue.Put(u)
+	return ch.queue.Put(j)
 }
 
 func (ch *JobQueue) Complete() {
@@ -46,11 +46,11 @@ func (ch *JobQueue) Wait() {
 	ch.wg.Wait()
 }
 
-func (ch *JobQueue) Poll() (string, error) {
+func (ch *JobQueue) Poll() (*Job, error) {
 	out, err := ch.queue.Get(1)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return out[0].(string), nil
+	return out[0].(*Job), nil
 }
