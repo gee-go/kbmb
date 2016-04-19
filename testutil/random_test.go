@@ -4,12 +4,18 @@ import (
 	"testing"
 
 	"github.com/gee-go/util/mrand"
+	"github.com/stretchr/testify/require"
 )
 
 const randSize = 10
 
 func TestRandom(t *testing.T) {
+	assert := require.New(t)
 
+	assert.Equal(nextPow2Exp(52), uint(6))
+	assert.Equal(nextPow2Exp(4), uint(2))
+	assert.Equal(nextPow2Exp(2), uint(1))
+	assert.Equal(nextPow2Exp(1), uint(1))
 }
 
 func BenchmarkAlphaString(b *testing.B) {
