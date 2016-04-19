@@ -65,6 +65,7 @@ func (c *Crawler) startWorkers() {
 	// send jobs
 	for {
 		u, err := c.q.Poll()
+
 		if err != nil {
 			fmt.Println(err)
 			continue
