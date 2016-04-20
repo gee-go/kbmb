@@ -12,7 +12,9 @@ import (
 func TestCrawl(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		doc.Render(w)
+		switch r.URL.Path {
+      case 
+    }
 	}))
 	defer ts.Close()
 
