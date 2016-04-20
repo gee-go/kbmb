@@ -80,7 +80,7 @@ func main() {
 		workProducer.MultiPublishAsync("urls", reply, nil)
 
 		return nil
-	}), 1)
+	}), 10)
 
 	if err := workConsumer.ConnectToNSQLookupd("localhost:4161"); err != nil {
 		log.WithError(err).Fatal("connect")
