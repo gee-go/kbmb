@@ -1,41 +1,57 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"time"
 
 	"github.com/apex/log"
+	"github.com/garyburd/redigo/redis"
 	"github.com/gee-go/kbmb/crawl"
 	"github.com/nsqio/go-nsq"
 )
 
-type Config struct {
-	Host string
-}
+var setExists = redis.NewScript(-1, `
+local r = {}
 
-func parseFlags() *Config {
-	c := &Config{}
+for _, m in pairs(ARGV) do
+  if redis.call('SISMEMBER', KEYS[1], m) == 0 then
+    r[#r+1] = m 
+  end
+end
 
-	flag.Parse()
+for _, m in pairs(ARGV) do
+  redis.call('SADD', KEYS[1], m)
+end
 
-	if flag.NArg() == 0 {
-		log.Fatal("Need a file")
-	}
+return r
+ `)
 
-	c.Host = flag.Arg(0)
-	return c
-}
+func NewRedisPool() *redis.Pool {
 
-func check(err error) {
-	if err != nil {
-		log.WithError(err).Fatal("check")
+	return &redis.Pool{
+		MaxIdle:     3,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.DialURL("redis://127.0.0.1:6379")
+			if err != nil {
+				return nil, err
+			}
+
+			return c, err
+		},
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
 	}
 }
 
 func main() {
 	cfg := nsq.NewConfig()
-
+	rdis := NewRedisPool()
+	c := rdis.Get()
+	c.Do("DEL", "visited")
+	c.Close()
 	workProducer, err := nsq.NewProducer("localhost:4150", cfg)
 	if err != nil {
 		log.WithError(err).Fatal("work producer")
@@ -45,6 +61,7 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("work consumer")
 	}
+
 	workConsumer.AddConcurrentHandlers(nsq.HandlerFunc(func(m *nsq.Message) error {
 		u := string(m.Body)
 		fmt.Println(u)
@@ -53,16 +70,17 @@ func main() {
 			return err
 		}
 		pr := doc.Result()
-
-		next := [][]byte{}
-		for _, n := range pr.Next {
-			next = append(next, []byte(n))
+		rconn := rdis.Get()
+		reply, err := redis.ByteSlices(setExists.Do(rconn, redis.Args{}.Add(1).Add("visited").AddFlat(pr.Next)...))
+		rconn.Close()
+		if err != nil {
+			return err
 		}
 
-		workProducer.MultiPublishAsync("urls", next, nil)
+		workProducer.MultiPublishAsync("urls", reply, nil)
 
 		return nil
-	}), 6)
+	}), 1)
 
 	if err := workConsumer.ConnectToNSQLookupd("localhost:4161"); err != nil {
 		log.WithError(err).Fatal("connect")
