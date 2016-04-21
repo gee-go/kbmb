@@ -5,32 +5,7 @@ import (
 	"github.com/apex/log/handlers/cli"
 	"github.com/gee-go/kbmb/cfg"
 	"github.com/gee-go/kbmb/crawl"
-	"github.com/nsqio/go-nsq"
 )
-
-type QueueHandler struct {
-	// 64bit atomic vars need to be first for proper alignment on 32bit platforms
-	counter uint64 // for round robin producer selection.
-
-	nsqConfig *nsq.Config
-	producers []*nsq.Producer
-}
-
-func NewQueueHandler() *QueueHandler {
-	return &QueueHandler{
-		nsqConfig: nsq.NewConfig(),
-	}
-}
-
-// Add a producer to the set. Not thread safe.
-func (qh *QueueHandler) AddProducer(h string) error {
-	producer, err := nsq.NewProducer(h, qh.nsqConfig)
-	if err != nil {
-		return err
-	}
-	qh.producers = append(qh.producers, producer)
-	return nil
-}
 
 func main() {
 	// Setup
