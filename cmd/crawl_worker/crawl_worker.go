@@ -15,11 +15,22 @@ func main() {
 	nsqConfig := &cfg.NSQConfig{
 		NSQDHosts: []string{"localhost:4150"},
 	}
-	crawler := crawl.NewCrawler(nsqConfig)
-	defer crawler.Stop()
-	crawler.Start(8)
 
-	crawler.SendURLs([]string{"http://gee.io"})
+	manager := crawl.NewManager(nsqConfig)
 
-	crawler.Wait()
+	crawl, err := crawl.NewCrawl("gee.io")
+	if err != nil {
+		panic(err)
+	}
+
+	if err := manager.Start(crawl); err != nil {
+		panic(err)
+	}
+
+	worker := manager.NewWorker(8)
+	defer worker.Stop()
+
+	if err := manager.Wait(crawl); err != nil {
+		panic(err)
+	}
 }
