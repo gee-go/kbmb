@@ -3,7 +3,7 @@ package crawl
 import (
 	"gopkg.in/vmihailenco/msgpack.v2"
 
-	"github.com/k0kubun/pp"
+	"github.com/apex/log"
 	"github.com/nsqio/go-nsq"
 )
 
@@ -24,14 +24,22 @@ func (c *Worker) HandleMessage(m *nsq.Message) error {
 	if err := msgpack.Unmarshal(m.Body, job); err != nil {
 		return err
 	}
-
 	defer c.m.markDone(job)
-	pp.Println(job)
+	log.WithField("url", job.URL).Info("job")
 	doc, err := NewDoc(job.URL, job.RootHost)
 	if err != nil {
 		return err
 	}
+	// TODO - config
+	if doc.doc.Url.Host != job.RootHost {
+		return nil
+	}
+
 	pr := doc.Result()
+	if err := c.m.publishEmails(job, pr.Emails); err != nil {
+		return err
+	}
+
 	return c.m.publishURLs(job, pr.Next)
 }
 

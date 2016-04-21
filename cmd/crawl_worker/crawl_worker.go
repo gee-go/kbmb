@@ -1,10 +1,14 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/gee-go/kbmb/cfg"
 	"github.com/gee-go/kbmb/crawl"
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/engine/standard"
 )
 
 func main() {
@@ -18,19 +22,12 @@ func main() {
 
 	manager := crawl.NewManager(nsqConfig)
 
-	crawl, err := crawl.NewCrawl("gee.io")
-	if err != nil {
-		panic(err)
-	}
-
-	if err := manager.Start(crawl); err != nil {
-		panic(err)
-	}
-
 	worker := manager.NewWorker(8)
 	defer worker.Stop()
 
-	if err := manager.Wait(crawl); err != nil {
-		panic(err)
-	}
+	e := echo.New()
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "Hello, World!")
+	})
+	e.Run(standard.New(":0"))
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/gee-go/kbmb/cfg"
 	"github.com/gee-go/kbmb/cfg/nsqutil"
+	"github.com/nsqio/go-nsq"
 	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
@@ -26,6 +27,13 @@ func NewManager(config *cfg.NSQConfig) *Manager {
 		redisPool:   cfg.NewRedisPool(),
 		nsqProducer: config.MustNewProducerPool(),
 	}
+}
+
+func (m *Manager) EmailConsumer(c *Crawl, fn func(m string)) *nsq.Consumer {
+	return m.config.MustNewConsumer(c.EmailTopic(), "emails", nsq.HandlerFunc(func(m *nsq.Message) error {
+		fn(string(m.Body))
+		return nil
+	}), 1)
 }
 
 func (m *Manager) NewWorker(concurrency int) *Worker {
@@ -55,6 +63,27 @@ func (m *Manager) markDone(c *Crawl) error {
 	defer rconn.Close()
 	_, err := rconn.Do("DECR", c.WaitGroupKey())
 	return err
+}
+
+func (m *Manager) publishEmails(parent *Crawl, emails []string) error {
+	// TODO - don't need wait group for emails
+	unpublished, err := redisDiffAndSet(m.redisPool, parent.EmailTopic(), "counter", emails)
+	if err != nil {
+		return err
+	}
+
+	if len(unpublished) == 0 {
+		return nil
+	}
+
+	// make messages to send.
+	out := make([][]byte, len(unpublished))
+	for i, u := range unpublished {
+
+		out[i] = []byte(u)
+	}
+
+	return m.nsqProducer.MultiPublishAsync(parent.EmailTopic(), out)
 }
 
 func (m *Manager) publishURLs(parent *Crawl, urls []string) error {

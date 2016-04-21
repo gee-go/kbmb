@@ -15,6 +15,10 @@ type Crawl struct {
 	RootHost string // the host used
 }
 
+func (c *Crawl) EmailTopic() string {
+	return fmt.Sprintf("email_%s", c.ID)
+}
+
 func (c *Crawl) VisitKey() string {
 	return fmt.Sprintf("visit:%s", c.ID)
 }
