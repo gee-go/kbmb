@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/gee-go/kbmb/crawl"
@@ -58,10 +56,8 @@ func main() {
 	if err := workConsumer.ConnectToNSQD("localhost:4150"); err != nil {
 		log.WithError(err).Fatal("connect")
 	}
-
+	visitCache.DiffAndSet([]string{"http://gee.io"})
 	workProducer.MultiPublishAsync("urls", [][]byte{[]byte("http://gee.io")})
 
-	for range time.Tick(1 * time.Second) {
-
-	}
+	visitCache.Wait()
 }
