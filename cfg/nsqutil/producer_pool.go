@@ -1,4 +1,4 @@
-package crawl
+package nsqutil
 
 import (
 	"sync/atomic"
@@ -14,16 +14,23 @@ type ProducerPool struct {
 	producers []*nsq.Producer
 }
 
-func (pp *ProducerPool) MultiPublishAsync(topic string, msgs [][]byte) error {
+func (pp *ProducerPool) getProducer() *nsq.Producer {
 	// round robin selection
 	rrCount := atomic.AddUint64(&pp.rrCount, 1)
 	pidx := rrCount % uint64(len(pp.producers))
 
-	producer := pp.producers[pidx]
-	return producer.MultiPublishAsync(topic, msgs, nil, nil)
+	return pp.producers[pidx]
 }
 
-func NewProducerPool(hosts ...string) (*ProducerPool, error) {
+func (pp *ProducerPool) PublishAsync(topic string, msgs []byte) error {
+	return pp.getProducer().PublishAsync(topic, msgs, nil, nil)
+}
+
+func (pp *ProducerPool) MultiPublishAsync(topic string, msgs [][]byte) error {
+	return pp.getProducer().MultiPublishAsync(topic, msgs, nil, nil)
+}
+
+func NewProducerPool(hosts []string) (*ProducerPool, error) {
 	pp := &ProducerPool{
 		producers: make([]*nsq.Producer, len(hosts)),
 	}

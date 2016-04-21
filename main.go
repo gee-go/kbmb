@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
+	"github.com/gee-go/kbmb/cfg"
 	"github.com/gee-go/kbmb/crawl"
 	"github.com/nsqio/go-nsq"
 )
@@ -36,28 +37,21 @@ func main() {
 	log.SetHandler(cli.Default)
 	log.SetLevel(log.DebugLevel)
 
-	cfg := nsq.NewConfig()
-	workProducer, err := crawl.NewProducerPool("localhost:4150")
-	if err != nil {
-		log.WithError(err).Fatal("work producer")
-	}
-
-	workConsumer, err := nsq.NewConsumer("urls", "download", cfg)
-	if err != nil {
-		log.WithError(err).Fatal("work consumer")
-	}
-
 	visitCache := crawl.NewRedisVisitCache("visited")
 	if err := visitCache.Clear(); err != nil {
 		log.WithError(err).Fatal("Clear visitCache")
 	}
 
-	workConsumer.AddConcurrentHandlers(crawl.MessageHandler(workProducer, visitCache), 10)
-	if err := workConsumer.ConnectToNSQD("localhost:4150"); err != nil {
-		log.WithError(err).Fatal("connect")
+	nsqConfig := &cfg.NSQConfig{
+		NSQDHosts: []string{"localhost:4150"},
 	}
+
+	nsqProducer := nsqConfig.MustNewProducerPool()
+	nsqConsumer := nsqConfig.MustNewConsumer("urls", "download", crawl.MessageHandler(nsqProducer, visitCache), 8)
+
+	defer nsqConsumer.Stop()
 	visitCache.DiffAndSet([]string{"http://gee.io"})
-	workProducer.MultiPublishAsync("urls", [][]byte{[]byte("http://gee.io")})
+	nsqProducer.PublishAsync("urls", []byte("http://gee.io"))
 
 	visitCache.Wait()
 }

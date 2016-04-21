@@ -6,6 +6,12 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
+type RedisConfig struct {
+	MaxIdle     int
+	IdleTimeout time.Duration
+	URL         string
+}
+
 func NewRedisPool() *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     3,
