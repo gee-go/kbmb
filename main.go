@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	"github.com/apex/log/handlers/cli"
 	"github.com/garyburd/redigo/redis"
 	"github.com/gee-go/kbmb/crawl"
 	"github.com/nsqio/go-nsq"
@@ -47,6 +48,9 @@ func NewRedisPool() *redis.Pool {
 }
 
 func main() {
+
+	log.SetHandler(cli.Default)
+	log.SetLevel(log.DebugLevel)
 	cfg := nsq.NewConfig()
 	rdis := NewRedisPool()
 	c := rdis.Get()
@@ -65,7 +69,7 @@ func main() {
 	workConsumer.AddConcurrentHandlers(nsq.HandlerFunc(func(m *nsq.Message) error {
 		u := string(m.Body)
 		fmt.Println(u)
-		doc, err := crawl.NewDoc(u, "web.mit.edu")
+		doc, err := crawl.NewDoc(u, "gee.io")
 		if err != nil {
 			return err
 		}
@@ -76,17 +80,18 @@ func main() {
 		if err != nil {
 			return err
 		}
-
-		workProducer.MultiPublishAsync("urls", reply, nil)
+		if len(reply) > 0 {
+			return workProducer.MultiPublishAsync("urls", reply, nil)
+		}
 
 		return nil
 	}), 10)
 
-	if err := workConsumer.ConnectToNSQLookupd("localhost:4161"); err != nil {
+	if err := workConsumer.ConnectToNSQD("localhost:4150"); err != nil {
 		log.WithError(err).Fatal("connect")
 	}
 
-	workProducer.PublishAsync("urls", []byte("http://mit.edu"), nil)
+	workProducer.PublishAsync("urls", []byte("http://gee.io"), nil)
 
 	for range time.Tick(1 * time.Second) {
 

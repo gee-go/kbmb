@@ -27,7 +27,7 @@ type Crawler struct {
 func NewCrawler() (*Crawler, error) {
 	cfg := nsq.NewConfig()
 	// cfg.MaxInFlight = 200
-	nsqProducer, err := nsq.NewProducer("localhost:4150", cfg)
+	nsqProducer, err := nsq.NewProducer("localhost:4151", cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (c *Crawler) Start(root string) error {
 		return c.nsqProducer.MultiPublishAsync(NSQChannel, next, nil)
 	}), size)
 
-	if err := c.NsqConsumer.ConnectToNSQLookupd("localhost:4161"); err != nil {
+	if err := c.NsqConsumer.ConnectToNSQD("localhost:4151"); err != nil {
 		return err
 	}
 
