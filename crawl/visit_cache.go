@@ -32,10 +32,10 @@ type RedisVisitCache struct {
 	key   string
 }
 
-func NewRedisVisitCache() VisitCache {
+func NewRedisVisitCache(key string) VisitCache {
 	return &RedisVisitCache{
 		rpool: cfg.NewRedisPool(),
-		key:   "visited",
+		key:   key,
 	}
 }
 
