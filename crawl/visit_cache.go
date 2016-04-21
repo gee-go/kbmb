@@ -80,6 +80,7 @@ func (vc *RedisVisitCache) Clear() error {
 }
 
 func (vc *RedisVisitCache) Wait() error {
+	// TODO - use keyspace notifications.
 	for range time.Tick(100 * time.Millisecond) {
 		count, err := vc.Count()
 		if err != nil || count == 0 {
