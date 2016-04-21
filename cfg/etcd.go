@@ -7,12 +7,11 @@ import (
 )
 
 func NewRedisPool() *redis.Pool {
-
 	return &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.DialURL("localhost:6379")
+			c, err := redis.DialURL("redis://127.0.0.1:6379")
 			if err != nil {
 				return nil, err
 			}

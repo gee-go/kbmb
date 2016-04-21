@@ -48,14 +48,11 @@ func NewRedisPool() *redis.Pool {
 }
 
 func main() {
-
+	// Setup
 	log.SetHandler(cli.Default)
 	log.SetLevel(log.DebugLevel)
+
 	cfg := nsq.NewConfig()
-	rdis := NewRedisPool()
-	c := rdis.Get()
-	c.Do("DEL", "visited")
-	c.Close()
 	workProducer, err := nsq.NewProducer("localhost:4150", cfg)
 	if err != nil {
 		log.WithError(err).Fatal("work producer")
@@ -66,6 +63,10 @@ func main() {
 		log.WithError(err).Fatal("work consumer")
 	}
 
+	visitCache := crawl.NewRedisVisitCache()
+	if err := visitCache.Clear(); err != nil {
+		log.WithError(err).Fatal("Clear visitCache")
+	}
 	workConsumer.AddConcurrentHandlers(nsq.HandlerFunc(func(m *nsq.Message) error {
 		u := string(m.Body)
 		fmt.Println(u)
@@ -74,14 +75,12 @@ func main() {
 			return err
 		}
 		pr := doc.Result()
-		rconn := rdis.Get()
-		reply, err := redis.ByteSlices(setExists.Do(rconn, redis.Args{}.Add(1).Add("visited").AddFlat(pr.Next)...))
-		rconn.Close()
+		next, err := visitCache.DiffAndSet(pr.Next)
 		if err != nil {
 			return err
 		}
-		if len(reply) > 0 {
-			return workProducer.MultiPublishAsync("urls", reply, nil)
+		if len(next) > 0 {
+			return workProducer.MultiPublishAsync("urls", next, nil)
 		}
 
 		return nil
