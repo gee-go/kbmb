@@ -16,15 +16,15 @@ const (
 )
 
 type Manager struct {
-	config      *cfg.NSQConfig
+	config      *cfg.Cfg
 	nsqProducer *nsqutil.ProducerPool
 	redisPool   *redis.Pool
 }
 
-func NewManager(config *cfg.NSQConfig) *Manager {
+func NewManager(config *cfg.Cfg) *Manager {
 	return &Manager{
 		config:      config,
-		redisPool:   cfg.NewRedisPool(),
+		redisPool:   config.NewRedisPool(),
 		nsqProducer: config.MustNewProducerPool(),
 	}
 }

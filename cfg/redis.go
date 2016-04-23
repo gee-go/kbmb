@@ -6,18 +6,16 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
-type RedisConfig struct {
-	MaxIdle     int
-	IdleTimeout time.Duration
-	URL         string
+type Redis struct {
+	URL string
 }
 
-func NewRedisPool() *redis.Pool {
+func (r Redis) NewRedisPool() *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.DialURL("redis://127.0.0.1:6379")
+			c, err := redis.DialURL(r.URL)
 			if err != nil {
 				return nil, err
 			}

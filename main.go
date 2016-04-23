@@ -14,12 +14,9 @@ func main() {
 	log.SetHandler(cli.Default)
 	log.SetLevel(log.DebugLevel)
 
-	nsqConfig := &cfg.NSQConfig{
-		NSQDHosts: []string{"localhost:4150"},
-	}
+	config := cfg.FromFlags()
 
-	manager := crawl.NewManager(nsqConfig)
-
+	manager := crawl.NewManager(config)
 	crawl, err := crawl.NewCrawl("mit.edu")
 	if err != nil {
 		panic(err)

@@ -7,6 +7,7 @@ import (
 	"github.com/apex/log/handlers/cli"
 	"github.com/gee-go/kbmb/cfg"
 	"github.com/gee-go/kbmb/crawl"
+	"github.com/k0kubun/pp"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine/standard"
 )
@@ -16,11 +17,10 @@ func main() {
 	log.SetHandler(cli.Default)
 	log.SetLevel(log.DebugLevel)
 
-	nsqConfig := &cfg.NSQConfig{
-		NSQDHosts: []string{"localhost:4150"},
-	}
+	config := cfg.FromFlags()
+	pp.Println(config)
 
-	manager := crawl.NewManager(nsqConfig)
+	manager := crawl.NewManager(config)
 
 	worker := manager.NewWorker(8)
 	defer worker.Stop()

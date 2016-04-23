@@ -1,13 +1,13 @@
 version: '2'
 services:
-  etcd:
-    image: quay.io/coreos/etcd
-    ports: 
-      - "2379:2379"
-    command: >
-      -listen-client-urls http://0.0.0.0:2379
-      -advertise-client-urls http://etcd:2379
-
+  worker:
+    build: .
+    depends_on:
+      - nsqd
+  
+  redis:
+    image: redis
+    
   nsqlookupd:
     image: nsqio/nsq
     ports:
