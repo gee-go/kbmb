@@ -79,7 +79,6 @@ func (m *Manager) publishEmails(parent *Crawl, emails []string) error {
 	// make messages to send.
 	out := make([][]byte, len(unpublished))
 	for i, u := range unpublished {
-
 		out[i] = []byte(u)
 	}
 

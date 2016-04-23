@@ -9,20 +9,25 @@ import (
 )
 
 // Crawl represents a single crawl job.
+// It can spawn many children.
 type Crawl struct {
 	ID       string
 	URL      string // starting url
 	RootHost string // the host used
 }
 
+// EmailTopic returns the name of the NSQ topic to listen for emails found.
+// Unique per crawl.
 func (c *Crawl) EmailTopic() string {
 	return fmt.Sprintf("email_%s", c.ID)
 }
 
+// VisitKey returns the name of the redis set used to track already crawled pages.
 func (c *Crawl) VisitKey() string {
 	return fmt.Sprintf("visit:%s", c.ID)
 }
 
+// WaitGroupKey returns the name of the redis counter used to emulated a distributed wait group.
 func (c *Crawl) WaitGroupKey() string {
 	return fmt.Sprintf("wait:%s", c.ID)
 }

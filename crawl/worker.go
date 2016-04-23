@@ -7,11 +7,6 @@ import (
 	"github.com/nsqio/go-nsq"
 )
 
-type Msg struct {
-	RootHost string
-	URL      string
-}
-
 // A worker downloads and parses urls from jobs it receives.
 type Worker struct {
 	m            *Manager
