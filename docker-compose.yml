@@ -2,7 +2,9 @@ version: '2'
 services:
   worker:
     build: .
-    command: go run main.go worker --nsqd nsqd:4150 --redis redis://redis:6379 
+    command: go run main.go worker
+    ports:
+      - "9999"
     depends_on:
       - nsqd
       - redis 

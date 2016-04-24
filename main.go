@@ -22,8 +22,8 @@ func main() {
 
 	// Setup config
 	config := &cfg.Cfg{}
-	rootCmd.PersistentFlags().StringVar(&config.Redis.URL, "redis", "redis://127.0.0.1:6379", "redis url")
-	rootCmd.PersistentFlags().StringSliceVar(&config.NSQDHosts, "nsqd", []string{"localhost:4150"}, "nsqd hosts")
+	rootCmd.PersistentFlags().StringVar(&config.Redis.URL, "redis", "redis://redis:6379", "redis url")
+	rootCmd.PersistentFlags().StringSliceVar(&config.NSQDHosts, "nsqd", []string{"nsqd:4150"}, "nsqd hosts")
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use: "worker",
@@ -36,7 +36,7 @@ func main() {
 			e.GET("/", func(c echo.Context) error {
 				return c.String(http.StatusOK, "Hello, World!")
 			})
-			e.Run(standard.New(":0"))
+			e.Run(standard.New(":9999"))
 		},
 	})
 
