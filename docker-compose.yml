@@ -9,7 +9,7 @@ services:
   redis:
     ports:
       - "6379:6379"
-    image: redis    
+    image: redis:alpine  
   nsqlookupd:
     image: nsqio/nsq
     ports:
