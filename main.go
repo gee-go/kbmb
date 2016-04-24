@@ -2,35 +2,68 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"os"
 
 	"github.com/apex/log"
-	"github.com/apex/log/handlers/cli"
+	apexCli "github.com/apex/log/handlers/cli"
 	"github.com/gee-go/kbmb/cfg"
 	"github.com/gee-go/kbmb/crawl"
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/engine/standard"
+	"github.com/spf13/cobra"
 )
 
 func main() {
-	// Setup
-	log.SetHandler(cli.Default)
+	log.SetHandler(apexCli.Default)
 	log.SetLevel(log.DebugLevel)
 
-	config := cfg.FromFlags()
+	rootCmd := &cobra.Command{Use: "kbmb"}
 
-	manager := crawl.NewManager(config)
-	crawl, err := crawl.NewCrawl("mit.edu")
-	if err != nil {
-		panic(err)
-	}
-	manager.EmailConsumer(crawl, func(email string) {
-		fmt.Println(email)
+	// Setup config
+	config := &cfg.Cfg{}
+	rootCmd.PersistentFlags().StringVar(&config.Redis.URL, "redis", "redis://127.0.0.1:6379", "redis url")
+	rootCmd.PersistentFlags().StringSliceVar(&config.NSQDHosts, "nsqd", []string{"localhost:4150"}, "nsqd hosts")
+
+	rootCmd.AddCommand(&cobra.Command{
+		Use: "worker",
+		Run: func(c *cobra.Command, args []string) {
+			manager := crawl.NewManager(config)
+			worker := manager.NewWorker(8)
+			defer worker.Stop()
+
+			e := echo.New()
+			e.GET("/", func(c echo.Context) error {
+				return c.String(http.StatusOK, "Hello, World!")
+			})
+			e.Run(standard.New(":0"))
+		},
 	})
 
-	if err := manager.Start(crawl); err != nil {
-		panic(err)
-	}
+	rootCmd.AddCommand(&cobra.Command{
+		Use: "start",
+		Run: func(c *cobra.Command, args []string) {
+			manager := crawl.NewManager(config)
+			crawl, err := crawl.NewCrawl("mit.edu")
+			if err != nil {
+				panic(err)
+			}
+			manager.EmailConsumer(crawl, func(email string) {
+				fmt.Println(email)
+			})
 
-	if err := manager.Wait(crawl); err != nil {
-		panic(err)
-	}
+			if err := manager.Start(crawl); err != nil {
+				panic(err)
+			}
 
+			if err := manager.Wait(crawl); err != nil {
+				panic(err)
+			}
+		},
+	})
+
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
 }

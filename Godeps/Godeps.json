@@ -40,6 +40,10 @@
 			"Rev": "8fddf8121e6ea842d9d47dbed5e16c4ccf105dcc"
 		},
 		{
+			"ImportPath": "github.com/inconshreveable/mousetrap",
+			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+		},
+		{
 			"ImportPath": "github.com/k0kubun/pp",
 			"Comment": "v2.1.0-8-g36d5366",
 			"Rev": "36d5366f4ec038f9a76dd85c7b29074089bb9b9e"
@@ -100,6 +104,14 @@
 			"ImportPath": "github.com/satori/go.uuid",
 			"Comment": "v1.0.0",
 			"Rev": "f9ab0dce87d815821e221626b772e3475a0d2749"
+		},
+		{
+			"ImportPath": "github.com/spf13/cobra",
+			"Rev": "4c05eb1145f16d0e6bb4a3e1b6d769f4713cb41f"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Rev": "8f6a28b0916586e7f22fe931ae2fcfc380b1c0e6"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
