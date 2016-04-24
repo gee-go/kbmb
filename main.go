@@ -23,7 +23,7 @@ func main() {
 	// Setup config
 	config := &cfg.Cfg{}
 	rootCmd.PersistentFlags().StringVar(&config.Redis.URL, "redis", "redis://redis:6379", "redis url")
-	rootCmd.PersistentFlags().StringSliceVar(&config.NSQDHosts, "nsqd", []string{"nsqd:4150"}, "nsqd hosts")
+	rootCmd.PersistentFlags().StringSliceVar(&config.NSQDHosts, "nsqd", []string{"kbmb_nsqd_1:4150", "kbmb_nsqd_2:4150", "kbmb_nsqd_3:4150"}, "nsqd hosts")
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use: "worker",

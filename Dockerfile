@@ -1,5 +1,3 @@
-FROM iron/go:dev
+FROM iron/go
 
-ENV GOPATH /src/go
-WORKDIR /src/go/src/github.com/gee-go/kbmb
-ADD . /src/go/src/github.com/gee-go/kbmb
+ADD kbmb .

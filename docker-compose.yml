@@ -2,7 +2,7 @@ version: '2'
 services:
   worker:
     build: .
-    command: go run main.go worker
+    command: ./kbmb worker
     ports:
       - "9999"
     depends_on:
