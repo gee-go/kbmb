@@ -1,84 +1,45 @@
 package crawl
 
 import (
-	"fmt"
-	"net/http"
-	"net/url"
-	"time"
+	"gopkg.in/vmihailenco/msgpack.v2"
 
-	"github.com/PuerkitoBio/goquery"
-
-	"golang.org/x/net/context"
-	"golang.org/x/net/context/ctxhttp"
+	"github.com/apex/log"
+	"github.com/nsqio/go-nsq"
 )
 
-type Job struct {
-	URL *url.URL
-}
-
-func (j *Job) Key() string {
-	u := j.URL.String()
-
-	if len(u) > 0 && u[len(u)-1] == '/' {
-		u = u[:len(u)-1]
-	}
-
-	return u
-}
-
+// A worker downloads and parses urls from jobs it receives.
 type Worker struct {
-	ID int
-
-	jobChan    chan *Job
-	workerChan chan chan *Job
-
-	q         *JobQueue
-	emailChan *UniqueStringChan
-
-	Host string
+	m            *Manager
+	workConsumer *nsq.Consumer
 }
 
-func (w *Worker) Process(ctx context.Context, j *Job) error {
-	resp, err := ctxhttp.Get(ctx, http.DefaultClient, j.URL.String())
+func (c *Worker) HandleMessage(m *nsq.Message) error {
+	// unmarshall message into job
+	job := &Crawl{}
+	if err := msgpack.Unmarshal(m.Body, job); err != nil {
+		return err
+	}
+	defer c.m.markDone(job)
+	log.WithField("url", job.URL).Info("job")
+	doc, err := NewDoc(job.URL, job.RootHost)
 	if err != nil {
 		return err
 	}
-
-	d, err := goquery.NewDocumentFromResponse(resp)
-	if err != nil {
-		return err
-	}
-	doc := &Doc{d, w.Host}
-
-	if doc.doc.Url.Host != w.Host {
+	// TODO - config
+	if doc.doc.Url.Host != job.RootHost {
 		return nil
 	}
 
-	doc.EachURL(func(u *url.URL) {
-		// handle mailto links
-		if u.Scheme == "mailto" {
-			w.emailChan.In() <- u.Opaque
-		} else if u.Host == w.Host {
-			w.q.Put(&Job{URL: u})
-		}
-	})
+	pr := doc.Result()
+	if err := c.m.publishEmails(job, pr.Emails); err != nil {
+		return err
+	}
 
-	return nil
+	return c.m.publishURLs(job, pr.Next)
 }
 
-// Start processing jobs.
-func (w *Worker) Start() {
-	for {
-		w.workerChan <- w.jobChan // worker is ready to work again.
-
-		select {
-		// got a new job.
-		case job := <-w.jobChan:
-			ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
-			if err := w.Process(ctx, job); err != nil {
-				fmt.Println(err)
-			}
-			w.q.Complete()
-		}
+func (c *Worker) Stop() {
+	if c.workConsumer != nil {
+		c.workConsumer.Stop()
 	}
 }
