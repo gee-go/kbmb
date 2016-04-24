@@ -3,10 +3,9 @@ LD_FLAGS := "-w -s"
 
 start:
 	docker-compose up --build -d
-  docker-compose scale nsqd=3
 	docker-compose scale worker=3
 
-restart: kbmb Dockerfile docker-compose.yml
+restart:
 	docker-compose up --no-deps --build -d worker
 
 stop:

@@ -37,6 +37,7 @@ func (c *Worker) HandleMessage(m *nsq.Message) error {
 	resp, err := ctxhttp.Get(ctx, http.DefaultClient, job.URL)
 	if err != nil {
 		lg.WithError(err).Error("http get")
+		return nil
 	}
 
 	// 2. Check for a redirect from a matching host to a non-matching host.

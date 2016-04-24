@@ -23,7 +23,7 @@ func main() {
 	// Setup config
 	config := &cfg.Cfg{}
 	rootCmd.PersistentFlags().StringVar(&config.Redis.URL, "redis", "redis://redis:6379", "redis url")
-	rootCmd.PersistentFlags().StringSliceVar(&config.NSQDHosts, "nsqd", []string{"kbmb_nsqd_1:4150", "kbmb_nsqd_2:4150", "kbmb_nsqd_3:4150"}, "nsqd hosts")
+	rootCmd.PersistentFlags().StringSliceVar(&config.NSQDHosts, "nsqd", []string{"nsqd:4150"}, "nsqd hosts")
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use: "worker",
@@ -43,11 +43,16 @@ func main() {
 	rootCmd.AddCommand(&cobra.Command{
 		Use: "start",
 		Run: func(c *cobra.Command, args []string) {
+			if len(args) == 0 {
+				log.Fatal("Need a domain.")
+			}
+
 			manager := crawl.NewManager(config)
-			crawl, err := crawl.NewCrawl("gee.io")
+			crawl, err := crawl.NewCrawl(args[0])
 			if err != nil {
 				panic(err)
 			}
+
 			manager.EmailConsumer(crawl, func(email string) {
 				fmt.Println(email)
 			})
