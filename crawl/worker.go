@@ -1,10 +1,17 @@
 package crawl
 
 import (
-	"gopkg.in/vmihailenco/msgpack.v2"
+	"net/http"
+	"net/url"
+	"time"
 
+	"github.com/PuerkitoBio/goquery"
+	"github.com/PuerkitoBio/purell"
 	"github.com/apex/log"
 	"github.com/nsqio/go-nsq"
+	"golang.org/x/net/context"
+	"golang.org/x/net/context/ctxhttp"
+	"gopkg.in/vmihailenco/msgpack.v2"
 )
 
 // A worker downloads and parses urls from jobs it receives.
@@ -20,22 +27,55 @@ func (c *Worker) HandleMessage(m *nsq.Message) error {
 		return err
 	}
 	defer c.m.markDone(job)
-	log.WithField("url", job.URL).Info("job")
-	doc, err := NewDoc(job.URL, job.RootHost)
+	lg := log.WithFields(job)
+	lg.Info("job")
+
+	// Timeout of 3 seconds
+	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+
+	// 1. Request the url
+	resp, err := ctxhttp.Get(ctx, http.DefaultClient, job.URL)
 	if err != nil {
-		return err
+		lg.WithError(err).Error("http get")
 	}
-	// TODO - config
-	if doc.doc.Url.Host != job.RootHost {
+
+	// 2. Check for a redirect from a matching host to a non-matching host.
+	if resp.Request.URL.Host != job.RootHost {
+		resp.Body.Close() // goquery auto closes.
 		return nil
 	}
 
-	pr := doc.Result()
-	if err := c.m.publishEmails(job, pr.Emails); err != nil {
-		return err
+	// 3. Parse response.
+	doc, err := goquery.NewDocumentFromResponse(resp)
+	if err != nil {
+		lg.WithError(err).Error("parse resp")
+		return nil
 	}
 
-	return c.m.publishURLs(job, pr.Next)
+	parser := NewParser(job, doc)
+	// 4. Iterate through links
+	var emails []string
+	var links []string
+
+	parser.EachURL(func(u *url.URL) {
+		if u.Scheme == "mailto" {
+			emails = append(emails, u.Opaque)
+		} else {
+			// make sure its absolute.
+			u = resp.Request.URL.ResolveReference(u)
+
+			if u.Host == job.RootHost {
+				// normalize
+				links = append(links, purell.NormalizeURL(u, purell.FlagsUsuallySafeGreedy))
+			}
+		}
+	})
+
+	// 5. pulish results
+	if err := c.m.publishEmails(job, emails); err != nil {
+		return err
+	}
+	return c.m.publishURLs(job, links)
 }
 
 func (c *Worker) Stop() {

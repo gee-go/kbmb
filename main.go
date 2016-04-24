@@ -44,7 +44,7 @@ func main() {
 		Use: "start",
 		Run: func(c *cobra.Command, args []string) {
 			manager := crawl.NewManager(config)
-			crawl, err := crawl.NewCrawl("mit.edu")
+			crawl, err := crawl.NewCrawl("gee.io")
 			if err != nil {
 				panic(err)
 			}

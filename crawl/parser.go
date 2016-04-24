@@ -2,38 +2,44 @@ package crawl
 
 import (
 	"net/url"
+	"path"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/apex/log"
 )
 
-type Doc struct {
-	doc  *goquery.Document
-	root string
+var skipExtensions = map[string]struct{}{
+	".pdf": struct{}{},
+	".zip": struct{}{},
+	".js":  struct{}{}, // Could be useful to download
+	".css": struct{}{},
+	".gif": struct{}{},
+	".jpg": struct{}{},
+	".png": struct{}{},
 }
 
 type URLFn func(u *url.URL)
 
-type PageResult struct {
-	// Emails contains all emails found on page
-	Emails []string
-
-	// Next contains links with the correct host.
-	// Not guarenteed to be unique or unvisited
-	Next []string
+type Parser struct {
+	Job *Crawl
+	Doc *goquery.Document
 }
 
-func NewDoc(u string, root string) (*Doc, error) {
-	doc, err := goquery.NewDocument(u)
-
-	if err != nil {
-		return nil, err
+func NewParser(job *Crawl, Doc *goquery.Document) *Parser {
+	return &Parser{
+		Job: job,
+		Doc: Doc,
 	}
-	return &Doc{doc, root}, nil
 }
 
-func (d *Doc) EachURL(fn URLFn) {
-	sel := d.doc.Find("[href]")
+func (p *Parser) ShouldSkip(u *url.URL) bool {
+	// skip certain file endings like .zip, .pdf, .gif
+	_, skip := skipExtensions[path.Ext(u.Path)]
+	return skip
+}
+
+func (p *Parser) EachURL(fn URLFn) {
+	sel := p.Doc.Find("[href]")
 
 	for i := range sel.Nodes {
 		l, ok := sel.Eq(i).Attr("href")
@@ -43,31 +49,12 @@ func (d *Doc) EachURL(fn URLFn) {
 
 		u, err := url.Parse(l)
 		if err != nil {
-			log.WithError(err).Info("url")
+			log.WithFields(p.Job).WithError(err).Info("url")
 			continue
 		}
 
-		fn(d.doc.Url.ResolveReference(u))
+		if !p.ShouldSkip(u) {
+			fn(u)
+		}
 	}
-
-}
-
-func (d *Doc) Result() *PageResult {
-	out := &PageResult{}
-	// TODO - Dedupe on a page basis.
-
-	d.EachURL(func(u *url.URL) {
-		// handle mailto links
-		if u.Scheme == "mailto" {
-			out.Emails = append(out.Emails, u.Opaque)
-			return
-		}
-
-		if u.Host == d.root {
-
-			out.Next = append(out.Next, u.String())
-		}
-	})
-
-	return out
 }

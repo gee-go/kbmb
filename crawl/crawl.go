@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/apex/log"
 	"github.com/satori/go.uuid"
 )
 
@@ -14,6 +15,15 @@ type Crawl struct {
 	ID       string
 	URL      string // starting url
 	RootHost string // the host used
+}
+
+//Fields returns log context.
+func (c *Crawl) Fields() log.Fields {
+	return log.Fields{
+		"id":  c.ID,
+		"url": c.URL,
+		"rh":  c.RootHost,
+	}
 }
 
 // EmailTopic returns the name of the NSQ topic to listen for emails found.

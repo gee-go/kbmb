@@ -12,6 +12,11 @@
 			"Rev": "4126223a86db8598275b29db04d511cfdab67cf1"
 		},
 		{
+			"ImportPath": "github.com/PuerkitoBio/purell",
+			"Comment": "v0.1.0-23-gd69616f",
+			"Rev": "d69616f51cdfcd7514d6a380847a152dfc2a749d"
+		},
+		{
 			"ImportPath": "github.com/andybalholm/cascadia",
 			"Rev": "3ad29d1ad1c4f2023e355603324348cf1f4b2d48"
 		},
@@ -97,6 +102,10 @@
 			"Rev": "642a3f9935f12cb3b747294318d730f56f4c34b4"
 		},
 		{
+			"ImportPath": "github.com/opennota/urlesc",
+			"Rev": "5fa9ff0392746aeae1c4b37fcc42c65afa7a9587"
+		},
+		{
 			"ImportPath": "github.com/pmezard/go-difflib/difflib",
 			"Rev": "e8554b8641db39598be7f6342874b958f12ae1d4"
 		},
@@ -129,6 +138,10 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
+			"Rev": "815d315ead425c4365077d904a2331ee9e179820"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context/ctxhttp",
 			"Rev": "815d315ead425c4365077d904a2331ee9e179820"
 		},
 		{
