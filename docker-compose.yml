@@ -1,0 +1,33 @@
+version: '2'
+services:
+  worker:
+    build: .
+    command: ./kbmb worker
+    ports:
+      - "9999"
+    depends_on:
+      - nsqd
+      - redis 
+  redis:
+    image: redis:alpine  
+  nsqlookupd:
+    image: nsqio/nsq
+    ports:
+      - "4160"
+      - "4161"
+    command: /nsqlookupd
+  nsqd:
+    image: nsqio/nsq
+    ports:
+      - "4150"
+      - "4151"
+    depends_on:
+      - nsqlookupd
+    command: /nsqd --lookupd-tcp-address=nsqlookupd:4160 --mem-queue-size=100000
+  nsqadmin:
+    image: nsqio/nsq
+    ports:
+      - "4171"
+    command: /nsqadmin --lookupd-http-address=nsqlookupd:4161
+    depends_on:
+      - nsqlookupd
